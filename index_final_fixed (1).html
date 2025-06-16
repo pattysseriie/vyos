@@ -1,0 +1,803 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>vyos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Ruslan+Display&family=Zen+Antique+Soft&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&family=Zen+Antique+Soft&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />
+  <script src="https://unpkg.com/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs" type="module"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: #606C38;
+    }
+    header {
+      background-color: #283618;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      font-size: 1.8rem;
+      font-family: 'Ruslan Display', cursive;
+    }
+    #container {
+      display: flex;
+      height: 100vh;
+    }
+    #sidebar {
+      position: absolute;
+      top: 90px;
+      left: 20px;
+      bottom: auto;
+      width: 280px;
+      padding: 1rem;
+      background: #FEFAE0;
+      border: 2px solid #283618;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      z-index: 1000;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      max-height: fit-content;
+      overflow-y: hidden;
+      transition: max-height 0.3s ease;
+}
+    #map {
+      flex: 1;
+      height: 100%;
+      min-height: 400px;
+    }
+    #info {
+      position: absolute;
+      top: 70px;
+      right: 20px;
+      width: 300px;
+      background: #ffffff;
+      padding: 1rem;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      display: none;
+      border: 2px solid #00809D;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    #introOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(254, 250, 224, 0.65); /* transparansi */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  text-align: center;
+  padding: 2rem;
+  backdrop-filter: blur(3px); /* tambah efek blur background */
+}
+
+#introOverlay h1 {
+  font-family: 'Ruslan Display', cursive;
+  font-size: 3rem;
+  color: #4F772D;
+  margin-bottom: 0.5rem; /* opsional kecilin jarak lagi */
+  margin-top: 0.2rem; /* tambahkan sedikit jarak atas */
+}
+
+#introOverlay p {
+  margin: 0.3rem 0;
+}
+
+#introOverlay button {
+  margin-top: 1.2rem;
+  padding: 0.8rem 1.5rem;
+  font-size: 1rem;
+  background-color: #FF7601;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  width: 50%; /* setengah layar */
+  max-width: 400px; /* supaya tidak terlalu besar di layar besar */
+}
+#introOverlay img {
+  max-width: 100px;
+  margin-bottom: 0.2rem; /* jarak bawahnya lebih dekat */
+}
+
+#floatingTitle {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  color: white;
+  font-size: 1.4rem;
+  font-family: 'Ruslan Display', cursive;
+  z-index: 1001;
+  background: none !important;
+  box-shadow: none !important;
+  display: block;
+}
+
+    button {
+      margin-top: 0.5rem;
+      width: 100%;
+      padding: 0.5rem;
+      background-color: #606C38;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    button:hover {
+      background-color: #006a84;
+    }
+    ul {
+      list-style: none;
+      padding-left: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    li {
+      margin: 0.3rem 0;
+      cursor: pointer;
+      background-color: #FCECDD;
+      padding: 0.3rem;
+      border-radius: 5px;
+    }
+    li:hover {
+      text-decoration: underline;
+      background-color: #F3A26D;
+    }
+    input {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      box-sizing: border-box;
+      width: 100%;
+      padding: 0.5rem;
+      border: none;
+      border-radius: 6px;
+      outline: none;
+    }
+    .leaflet-popup-content-wrapper {
+  background-color: #FEFAE0;
+  color: 283618;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.leaflet-popup-tip {
+  background-color: #FEFAE0;
+}
+#introOverlay .logo {
+  width: 220px;
+  height: 220px;
+  margin-bottom: 0.6rem;
+}
+
+#introOverlay h1 {
+  font-family: 'Ruslan Display', cursive;
+  font-size: 2.8rem;
+  color: #283618;
+  margin: 0.2rem 0 0.4rem 0;
+}
+
+#introOverlay .tagline {
+  font-family: 'Ruslan Display', cursive;
+  color: #90A955;
+  font-size: 20px;
+  margin: 0;
+}
+
+#introOverlay .subtext {
+  font-family: 'Nunito Sans', sans-serif;
+  font-size: 15px;
+  color: #000;
+  margin-top: 0.5rem;
+  max-width: 600px;
+}
+
+#introOverlay button {
+  margin-top: 1.4rem;
+  padding: 0.75rem 1.2rem;
+  font-size: 1rem;
+  background-color: #FF7601;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: 'Nunito Sans', sans-serif;
+  width: 50%;
+  max-width: 300px;
+  transition: background-color 0.3s;
+}
+#introOverlay button:hover {
+  background-color: #e25d00;
+}
+.ruslan {
+  font-family: 'Ruslan Display', cursive;
+}
+dotlottie-player.logo {
+  width: 220px;
+  height: 220px;
+  margin-bottom: 0.3rem;
+  background: none !important;
+}
+@media (max-width: 768px) {
+  #introOverlay {
+    padding: 1.5rem;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    width: 100vw;
+    box-sizing: border-box;
+  }
+
+  dotlottie-player.logo {
+    display: block;
+    margin: 0 auto 0.4rem auto;
+    width: 160px !important;
+    height: 160px !important;
+  }
+
+  #introOverlay h1,
+  #introOverlay .tagline,
+  #introOverlay .subtext {
+    text-align: center;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  #introOverlay button {
+    width: 80%;
+    font-size: 0.9rem;
+    margin: 1rem auto 0 auto;
+    display: block;
+  }
+ #sidebar {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80vw;
+    height: 50vh;
+    padding: 0.5rem 1rem;
+    background: #FEFAE0;
+    border: 2px solid #283618;
+    border-radius: 12px; /* <-- ini bikin sudut tumpul */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    overflow-y: auto;
+    z-index: 1000;
+  }
+ input {
+    width: 100%;
+    max-width: 100%;  /* PASTIKAN TIDAK MELEBAR */
+    box-sizing: border-box;
+ }
+  #sidebar button {
+    width: 100%;
+    font-size: 14px;
+  }
+
+  #map {
+    height: 50vh;
+  }
+
+  #container {
+    flex-direction: column;
+  }
+
+  #info {
+    width: 90%;
+    right: 5%;
+    top: auto;
+    bottom: 1rem;
+  }
+
+  #floatingTitle {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  font-size: 1.6rem;
+  font-family: 'Ruslan Display', cursive;
+  color: #283618;
+  background: none;
+  box-shadow: none;
+  z-index: 1001;
+  display: block;
+}
+
+  }
+  </style>
+</head>
+<body>
+  <div id="introOverlay">
+  <dotlottie-player
+    src="https://lottie.host/289c691f-a53a-484e-ac32-23543413949c/Mecdl5peWl.lottie"
+    background="transparent"
+    speed="1"
+    class="logo"
+    loop
+    autoplay>
+  </dotlottie-player>
+  <h1>vyos</h1>
+  <p class="tagline">Visit Yogya and Sleep</p>
+  <p class="subtext">Temukan tempat wisata dan penginapan menarik di Yogyakarta dalam satu peta interaktif.</p>
+  <button onclick="startApp()">Find a place to visit and sleep!</button>
+</div>
+<div id="floatingTitle" style="display: none;">vyos</div>
+  <div id="container">
+    <div id="sidebar">
+      <label for="wisataInput"><strong>Cari Tempat Wisata:</strong></label>
+      <input id="wisataInput" type="text" placeholder="contoh: Borobudur" />
+      <button id="btnWisata">Cari Tempat Wisata</button>
+      <button id="btnHotel">Cari Hotel</button>
+      <div id="sortLabel" style="display: none; margin-top: 1rem; font-size: 14px;">
+  <span class="material-symbols-outlined" style="vertical-align: middle; font-size: 18px;">filter_alt</span>
+  <select id="sortSelect" style="font-family: 'Zen Antique Soft', serif; font-size: 14px; border: none; background: transparent; outline: none;">
+    <option value="price">Sort by Price Range</option>
+    <option value="distance">Sort by Distance</option>
+  </select>
+</div>
+<ul id="hotelList"></ul>
+    </div>
+    <div id="map"></div>
+    <div id="info"></div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <script>
+    const map = L.map('map').setView([-7.797, 110.370], 10);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18
+    }).addTo(map);
+
+    const wisataData = [
+      { name: 'Pantai Parangtritis', lat: -8.024608, lng: 110.329804, description: 'Pantai legendaris dengan ombak besar dan pemandangan tebing eksotis, cocok untuk menikmati sunset.' },
+  { name: 'Gumuk Pasir Parangkusumo', lat: -8.018450, lng: 110.319551, description: 'Gundukan pasir alami satu-satunya di Asia Tenggara, populer untuk sandboarding dan foto prewedding.' },
+  { name: 'Hutan Pinus Pengger', lat: -7.871167, lng: 110.459460, description: 'Hutan pinus dengan spot foto ikonik dan pemandangan malam kota Jogja dari ketinggian.' },
+  { name: 'Curug Pulosari', lat: -7.860963, lng: 110.287098, description: 'Air terjun tersembunyi dengan suasana alami dan kolam alami untuk bermain air.' },
+  { name: 'Bukit Panguk Kediwung', lat: -7.958369, lng: 110.440762, description: 'Spot sunrise dengan pemandangan kabut pagi yang memesona di atas perbukitan.' },
+  { name: 'Puncak Becici', lat: -7.902036, lng: 110.437463, description: 'Bukit dengan hutan pinus dan gardu pandang, terkenal karena pernah dikunjungi Barack Obama.' },
+  { name: 'Kebun Buah Mangunan', lat: -7.937719, lng: 110.428214, description: 'Kebun buah dengan pemandangan lembah dan kabut pagi yang memesona, cocok untuk sunrise.' },
+  { name: 'Pantai Goa Cemara', lat: -7.999423, lng: 110.248963, description: 'Pantai dengan deretan pohon cemara udang yang rindang dan suasana tenang.' },
+  { name: 'Pantai Samas', lat: -8.005608, lng: 110.265095, description: 'Pantai dengan mercusuar dan area konservasi penyu, cocok untuk edukasi dan wisata alam.' },
+  { name: 'Watu Goyang', lat: -7.927411, lng: 110.412054, description: 'Batu besar di puncak bukit yang bisa bergoyang, dengan panorama sunset yang indah.' },
+  { name: 'Jurang Tembelan', lat: -7.939994, lng: 110.429838, description: 'Spot foto dengan gardu pandang berbentuk perahu di atas jurang, cocok untuk melihat kabut pagi.' },
+  { name: 'Seribu Batu Songgo Langit', lat: -7.930889, lng: 110.430826, description: 'Wisata alam dengan rumah hobbit, jembatan kayu, dan wahana edukatif di tengah hutan pinus.' },
+  { name: 'Goa Cerme', lat: -7.979441, lng: 110.380311, description: 'Goa alam bersejarah yang dulunya digunakan untuk rapat para wali, dengan stalaktit dan sungai bawah tanah.' },
+  { name: 'Air Terjun Randusari', lat: -7.917667, lng: 110.489316, description: 'Air terjun bertingkat dengan suasana asri dan akses jalan setapak yang menantang.' },
+  { name: 'Goa Selarong', lat: -7.861969, lng: 110.314882, description: 'Goa bersejarah tempat persembunyian Pangeran Diponegoro, dikelilingi hutan dan air terjun kecil.' },
+  { name: 'Pantai Baru', lat: -7.988938, lng: 110.221040, description: 'Pantai dengan kincir angin dan suasana alami, cocok untuk piknik dan menikmati angin laut.' },
+  { name: 'Taman Buah Puri Mataram', lat: -7.721313, lng: 110.348374, description: 'Taman wisata keluarga dengan kebun buah, danau buatan, dan wahana permainan anak.' },
+  { name: 'Pantai Pandansari', lat: -8.000687, lng: 110.253338, description: 'Pantai dengan mercusuar yang bisa dinaiki untuk melihat panorama laut dari ketinggian.' },
+  { name: 'Tebing Watu Mabur', lat: -7.945574, lng: 110.440684, description: 'Tebing dengan gardu pandang dan area camping, menawarkan pemandangan kabut pagi yang dramatis.' },
+  { name: 'Ekowisata Sungai Mudal', lat: -7.762817, lng: 110.116231, description: 'Air terjun yang indah dan kolam alami yang menarik.' },
+  { name: 'Bendung Khayangan Adventure Park', lat: -7.745064, lng: 110.180657, description: 'Area publik nuansa alam dengan situs sejarah.' },
+  { name: 'Mahaloka Pradise', lat: -7.747227, lng: 110.205593, description: 'Tempat dengan view hamparan sawah hijau dengan latar Bukit Menoreh.' },
+  { name: 'Jembatan Kereta Api Mbeling', lat: -7.815449, lng: 110.233540, description: 'Destinasi wisata karena jembatan yang sudah tidak digunakan.' },
+  { name: 'Embung Bogor', lat: -7.810021, lng: 110.145154, description: 'Air terjun dengan suasana sejuk dan dingin, serta pemandangan yang cukup bagus.' },
+  { name: 'Sanggar Among Lare', lat: -7.819102, lng: 110.152935, description: 'Tempat wisata dengan pemandangan yang cocok untuk senam dan tracking jalan.' },
+  { name: 'Wisata Klengkeng Dukuh', lat: -7.790113, lng: 110.230296, description: 'Tempat wisata dengan nuansa Bali, Kyoto, dan Jawa.' },
+  { name: 'Embung Blubuk', lat: -7.804196, lng: 110.143422, description: 'Tempat wisata dengan area yang sejuk dan terdapat wahanan permainan air.' },
+  { name: 'Puncak Moyeng', lat: -7.750548, lng: 110.178555, description: 'Tempat wisata dengan view hamparan alam Yogyakarta.' },
+  { name: 'Pendoworejo Monument', lat: -7.749516, lng: 110.189124, description: 'Taman dengan monumen Pendoworejo dengan view alam yang indah.' },
+  { name: 'Jeep Tour dan Pusat Informasi Wisata Alam Menoreh', lat: -7.816926, lng: 110.148671, description: 'Wisata tour jeep dengan rute yang menarik.' },
+  { name: 'Goa Kebon', lat: -7.887136, lng: 110.186674, description: 'Goa dengan adanya air terjun mini di atasnya.' },
+  { name: 'Laguna Glagah', lat: -7.914770, lng: 110.075398, description: 'Danau kecil di pinggir pantai, cocok untuk wisata keluarga.' },
+  { name: 'Gardu Pandang Tempat Foto Bandara + Pesawat', lat: -7.906567, lng: 110.055584, description: 'Tempat untuk melihat pesawat dan bandara YIA.' },
+  { name: 'Pantai Bidara', lat: -7.950167, lng: 110.150775, description: 'Pantai dengan view yang indah.' },
+  { name: 'Laguna Pantai Trisik', lat: -7.974768, lng: 110.193838, description: 'Laguna untuk menikmati suasana pedesaan di Pesisir Pantai Trisik.' },
+  { name: 'Pemecah Ombak Pantai Glagah', lat: 7.919008, lng: 110.077606, description: 'Tempat untuk berfoto ria karena terdapat view pantai yang indah.' },
+  { name: 'Bendungan Waduk Sermo', lat: -7.824859, lng: 110.123619, description: 'Tempat rekreasi yang nyaman.' },
+  { name: 'Pantai Congot', lat: -7.907542, lng: 110.053566, description: 'Pantai dengan suasana sejuk dan nyaman.' },
+  { name: 'Ngantru Dam Kamijoro', lat: -7.880458, lng: 110.267565, description: 'Tempat dengan view menarik dan terdapat taman bermain.' },
+  { name: 'Kedung Ingas', lat: -7.913376, lng: 110.229910, description: 'Tempat rekreasi seperti curug atau air terjun.' },
+  { name: 'Pule Hills View atau Wisata Tebing Metes', lat: -7.835670, lng: 110.278254, description: 'Tempat pemandangan yang bagus.' },
+  { name: 'Dermaga Prau Wisata Ngebisan', lat: -7.978343, lng: 110.205248, description: 'Spot yang cocok untuk sunset.' },
+  { name: 'Laguna Barat Pantai Laguna', lat: -7.913363, lng: 110.073984, description: 'Tempat yang cocok untuk bersantai.' },
+  { name: 'Pantai Bugel', lat: -7.951229, lng: 110.152834, description: 'Pantai view indah.' },
+  { name: 'Pantai Glagah Indah', lat: -7.912007, lng: 110.064878, description: 'Pantai view indah.' },
+  { name: 'Pantai Cubung Jngkang', lat: -7.932479, lng: 110.112749, description: 'Pantai view indah.' },
+  { name: 'Pantai Mlarangan Asri', lat: -7.945810, lng: 110.142271, description: 'Pantai View Indah.' },
+  { name: 'Pasir Kadilangu Beach', lat: -7.894585, lng: 110.028791, description: 'Wisata mangrove yang menarik.' },
+  { name: 'Panta Imorenggo', lat: -7.965831, lng: 110.182482, description: 'Pantai dengan view indah.' },
+  { name: 'Pantai Karangwuni', lat: -7.920160, lng: 110.084397, description: 'Pantai view indah.' },
+  {
+  name: 'Gunung Api Purba Nglanggeran',
+  lat: -7.84056,
+  lng: 110.54500,
+  description: 'Gunung batu purba dengan jalur hiking dan pemandangan alam yang memesona.'
+},
+{
+  name: 'Embung Nglanggeran',
+  lat: -7.84719,
+  lng: 110.54679,
+  description: 'Waduk buatan di atas bukit dengan panorama indah saat matahari terbit.'
+},
+{
+  name: 'Pantai Nglambor',
+  lat: -8.18283,
+  lng: 110.67880,
+  description: 'Pantai populer untuk snorkeling dengan terumbu karang dangkal.'
+},
+{
+  name: 'Pantai Jogan',
+  lat: -8.18400,
+  lng: 110.68200,
+  description: 'Pantai dengan air terjun kecil dan suasana eksotis di bibir pantai.'
+},
+{
+  name: 'Pantai Sadranan',
+  lat: -8.14561,
+  lng: 110.60431,
+  description: 'Pantai tenang, cocok untuk snorkeling dan keluarga.'
+},
+{
+  name: 'Pantai Drini',
+  lat: -7.79691,
+  lng: 110.36471,
+  description: 'Pantai tenang dengan batu karang dan pemandangan alam yang memukau.'
+},
+{
+  name: 'Goa Pindul',
+  lat: -7.95286,
+  lng: 110.61907,
+  description: 'Goa dengan cave tubing menyusuri sungai bawah tanah.'
+},
+{
+  name: 'Air Terjun Sri Gethuk',
+  lat: -7.94291,
+  lng: 110.48926,
+  description: 'Air terjun bertingkat dengan akses menggunakan perahu dan trekking ringan.'
+},
+{
+  name: 'Kampung Wisata Sosromenduran',
+  lat: -7.7965,
+  lng: 110.3659,
+  description: 'Kampung wisata multibudaya, hanya sekitar 800 m dari Malioboro.'
+},
+{
+  name: 'Tugu Yogyakarta',
+  lat: -7.7851,
+  lng: 110.3668,
+  description: 'Monumen ikonik di pusat Yogyakarta, simbol budaya dan kota.'
+},
+{
+  name: 'Titik Nol Kilometer',
+  lat: -7.7975,
+  lng: 110.3670,
+  description: 'Titik nol Yogyakarta, tempat berkumpul dan spot foto di pusat kota.'
+},
+{
+  name: 'Jogja National Museum',
+  lat: -7.7970,
+  lng: 110.3635,
+  description: 'Museum seni dan budaya di bekas kampus ASRI, dekat Malioboro.'
+},
+{
+  name: 'Taman Pintar',
+  lat: -7.7951,
+  lng: 110.3660,
+  description: 'Science park edukatif dengan planetarium dan wahana anak-anak.'
+},
+{
+  name: 'Pasar Beringharjo',
+  lat: -7.7973,
+  lng: 110.3665,
+  description: 'Pasar tradisional tertua di dekat Malioboro, pusat batik dan kuliner.'
+},
+{
+  name: 'Gembira Loka Zoo',
+  lat: -7.7829,
+  lng: 110.3882,
+  description: 'Kebun binatang besar di Yogyakarta, cocok untuk wisata keluarga.'
+},
+{
+  name: 'Museum Sonobudoyo',
+  lat: -7.7979,
+  lng: 110.3658,
+  description: 'Museum budaya Jawa, lengkap dengan koleksi wayang dan gamelan.'
+},
+{
+  name: 'Taman Sari Water Castle',
+  lat: -7.8065,
+  lng: 110.3630,
+  description: 'Bekas taman kerajaan dengan kolam pemandian dan lorong bawah tanah.'
+},
+{
+  name: 'Jalan Malioboro',
+  lat: -7.7970,
+  lng: 110.3670,
+  description: 'Wahana hiburan bernuansa tradisional di sepanjang jalannya.'
+}
+    ];
+
+    const hotelData = [
+      { name: 'Hotel Tentrem', price: 'Rp2.803.771', lat:  -7.773887, lng: 110.368508 },
+        { name: 'Hotel Tara', price: 'Rp422.318', lat:  -7.771700, lng: 110.361218 },
+        { name: 'Hotel Widitya Inn', price: 'Rp126.638', lat:  -7.817066, lng: 110.353763 },
+        { name: 'Hotel The Malioboro', price: 'Rp765.000', lat: -7.792670, lng: 110.361198 },
+        { name: 'Hotel Wilis', price: 'Rp200.000', lat:  -7.801842, lng: 110.373084 },
+        { name: 'Hotel Madina Inn', price: 'Rp634.605', lat:  -7.807244, lng: 110.377355 },
+        { name: 'Hotel Sans Prime', price: 'Rp765.000', lat:  -7.810522, lng: 110.377288 },
+        { name: 'Hotel Bugis Asri', price: 'Rp181.085', lat:  -7.812126, lng: 110.351737 },
+        { name: 'Hotel Cordela Kartika Dewi', price: 'Rp430.000', lat:  -7.798383, lng: 110.361777 },
+        { name: 'Hotel Arrayyan Malioboro', price: 'Rp289.537', lat:  -7.800313, lng: 110.361899 },
+        { name: 'Hotel Cavinton', price: 'Rp557.564', lat:  -7.800890, lng: 110.356049 },
+        { name: 'Hotel Edu', price: 'Rp350.944', lat: -7.799482, lng: 110.356286 },
+        { name: 'Hotel Sans Nagari', price: 'Rp279.778', lat:  -7.798717, lng: 110.356276 },
+        { name: 'Hotel Swissbel Boutique', price: 'Rp709.372', lat:  -7.782690, lng: 110.374300 },
+        { name: 'Hotel The Sleepingroom', price: 'Rp350.000', lat:  -7.778471, lng: 110.378063 },
+        { name: 'Hotel Sagan Heritage', price: 'Rp335.507', lat:  -7.780196, lng: 110.376462 },
+        { name: 'Hotel Kimaya Sudirman', price: 'Rp575.861', lat:  -7.782764, lng: 110.377834 },
+        { name: 'Hotel H Boutique', price: 'Rp305.364', lat:  -7.781810, lng: 110.379095 },
+        { name: 'Hotel Carani', price: 'Rp276.245', lat:  -7.780139, lng: 110.379331 },
+        { name: 'Hotel The Cabin Ngupasan', price: 'Rp297.432', lat:  -7.798786, lng: 110.362308 },
+        { name: 'Hotel KHAS', price: 'Rp431.155', lat: -7.798227, lng: 110.363324 },
+        { name: 'Hotel Mitra', price: 'Rp246.726', lat:  -7.801504, lng: 110.363810 },
+        { name: 'Hotel Dosare Capsule Hotel', price: 'Rp182.500', lat:  -7.796508, lng: 110.365184 },
+        { name: 'Hotel Limaran 1 Syariah', price: 'Rp465.860', lat:  -7.801110, lng: 110.369180 },
+        { name: 'Hotel Grand Zuri', price: 'Rp630.352', lat:  -7.787677, lng: 110.366694 },
+        { name: 'Hotel SARE', price: 'Rp196.669', lat:  -7.786533, lng: 110.363318 },
+        { name: 'Hotel Griya Sentana', price: 'Rp360.000', lat:  -7.785224, lng: 110.363500 },
+        { name: 'Hotel Dieng Permai', price: 'Rp163.960', lat:  -7.785897, lng: 110.363104 },
+        { name: 'Hotel The 101 Tugu', price: 'Rp297.432', lat:  -7.784195, lng: 110.366821 },
+        { name: 'Hotel Harper Malioboro', price: 'Rp758.000', lat: -7.784789, lng: 110.367238 },
+        { name: 'Hotel Grand Senyum', price: 'Rp1.300.000', lat:  -7.782970, lng: 110.365388 },
+        { name: 'Hotel Sartika', price: 'Rp105.000', lat:  -7.801411, lng: 110.352930 },
+        { name: 'Hotel Home Addicts', price: 'Rp179.946', lat:  -7.805435, lng: 110.350465 },
+        { name: 'Hotel Nidya', price: 'Rp200.000', lat:  -7.806144, lng: 110.350585 },
+        { name: 'Hotel Fave', price: 'Rp462.025', lat:  -7.785693, lng: 110.369991 },
+        { name: 'Hotel Pelangi', price: 'Rp94.854', lat:  -7.807444, lng: 110.356143 },
+        { name: 'Hotel Novatel', price: 'Rp164.428', lat:  -7.805211, lng: 110.356307 },
+        { name: 'Hotel Caniga', price: 'Rp247.631', lat:  -7.834956, lng: 110.394005 },
+        { name: 'Hotel Artotel Bianti', price: 'Rp676.032', lat: -7.782892, lng: 110.381945 },
+        { name: 'Hotel Tribrata', price: 'Rp300.000', lat:  -7.785026, lng: 110.386220 },
+        { name: 'Hotel All Day n Nite', price: 'Rp250.239', lat:  -7.780248, lng: 110.387976 },
+        { name: 'Hotel iBis', price: 'Rp638.000', lat:  -7.793954, lng: 110.361496 },
+        { name: 'Hotel Luxury Malioboro', price: 'Rp293.269', lat:  -7.787455, lng: 110.363637 },
+        { name: 'Hotel Riss', price: 'Rp541.326', lat:  -7.787665, lng: 110.364420 },
+        { name: 'Hotel O Jalan', price: 'Rp125.279', lat:  -7.787632, lng: 110.365315 },
+        { name: 'Hotel Prime Malioboro', price: 'Rp421.607', lat:  -7.790145, lng: 110.365276 },
+        { name: 'Hotel Neo Malioboro', price: 'Rp1.081.937', lat: -7.790047, lng: 110.364615 },
+        { name: 'Hotel Unisi', price: 'Rp401.130', lat:  -7.790155, lng: 110.363842 },
+        { name: 'Hotel Abadi Malioboro', price: 'Rp570.570', lat:  -7.790268, lng: 110.363251 },
+        { name: 'Hotel Arte Malioboro', price: 'Rp402.135', lat:  -7.789980, lng: 110.362335 },
+        { name: 'Hotel POP!', price: 'Rp347.910', lat:  -7.790774, lng: 110.362022 },
+        { name: 'Hotel Amalia Malioboro', price: 'Rp198.405', lat:  -7.791203, lng: 110.365708 },
+        { name: 'Hotel Batik Cottage', price: 'Rp362.965', lat:  -7.792509, lng: 110.364615 },
+        { name: 'Hotel Regantris Malioboro', price: 'Rp641.250', lat:  -7.791957, lng: 110.364001 },
+        { name: 'Hotel Patra Malioboro', price: 'Rp605.625', lat:  -7.791791, lng: 110.363720 },
+        { name: 'Hotel Grage', price: 'Rp326.400', lat: -7.791363, lng: 110.362294 },
+        { name: 'Hotel eL Malioboro', price: 'Rp685.533', lat:  -7.793890, lng: 110.364923 },
+        { name: 'Hotel Peti Mas', price: 'Rp357.942', lat:  -7.793934, lng: 110.363917 },
+        { name: 'Hotel Kombokarno Malioboro', price: 'Rp183.600', lat:  -7.793914, lng: 110.363525 },
+        { name: 'Hotel Fortuna Grande', price: 'Rp404.960', lat:  -7.793597, lng: 110.362887 },
+        { name: 'Hotel Amaris', price: 'Rp502.860', lat:  -7.796172, lng: 110.364681 },
+        { name: 'Hotel Forriz', price: 'Rp346.250', lat:  -7.795462, lng: 110.353520 },
+        { name: 'Hotel AJ Boutique', price: 'Rp257.651', lat:  -7.800211, lng: 110.350508 },
+        { name: 'Hotel De Bijou', price: 'Rp402.623', lat:  -7.797538, lng: 110.380010 },
+        { name: 'Hotel Delta', price: 'Rp250.000', lat: -7.790053, lng: 110.393252 },
+        { name: 'Hotel KHAS Tugu', price: 'Rp446.123', lat:  -7.783295, lng: 110.363129 },
+        { name: 'Hotel Best City', price: 'Rp247.646', lat:  -7.783410, lng: 110.360969 },
+        { name: 'Hotel Laxston', price: 'Rp274.284', lat:  -7.780148, lng: 110.360768 },
+        { name: 'Hotel Santika Premiere', price: 'Rp736.950', lat:  -7.782458, lng: 110.369756 },
+        { name: 'Hotel Phoenix', price: 'Rp990.878', lat:  -7.782709, lng: 110.368500 },
+        { name: 'Hotel Griya Jogja', price: 'Rp213.141', lat:  -7.781179, lng: 110.366613 },
+        { name: 'Hotel POP! Sangaji', price: 'Rp239.657', lat:  -7.781349, lng: 110.367677 },
+        { name: 'Hotel Citradream', price: 'Rp281.267', lat:  -7.780237, lng: 110.367684 },
+        { name: 'Hotel Pules', price: 'Rp171.615', lat: -7.791941, lng: 110.367702 },
+        { name: 'Hotel Nueve Malioboro', price: 'Rp268.091', lat:  -7.795922, lng: 110.368913 },
+        { name: 'Hotel Sans Mataram', price: 'Rp200.000', lat:  -7.794577, lng: 110.368477 },
+        { name: 'Hotel Akur Malioboro', price: 'Rp125.275', lat:  -7.794235, lng: 110.367926 },
+        { name: 'Hotel Puspo Nugroho', price: 'Rp165.893', lat:  -7.794298, lng: 110.367594 },
+        { name: 'Hotel Malioboro Garden', price: 'Rp248.497', lat:  -7.794199, lng: 110.366834 },
+        { name: 'Hotel Novotel Suites', price: 'Rp942.033', lat:  -7.793182, lng: 110.366566 },
+        { name: 'Hotel Urbanview Syariah', price: 'Rp114.450', lat:  -7.802392, lng: 110.391110 },
+        { name: 'Hotel Fave Kusumanegara', price: 'Rp305.574', lat:  -7.801775, lng: 110.388269 },
+        { name: 'Hotel Gaia Cosmo', price: 'Rp619.704', lat: -7.798921, lng: 110.392947 },
+        { name: 'Hotel Kalya', price: 'Rp256.987', lat:  -7.813534, lng: 110.401461 },
+        { name: 'Hotel Musafira', price: 'Rp158.058', lat:  -7.804285, lng: 110.377060 },
+        { name: 'Hotel IRAA', price: 'Rp96.665', lat:  -7.797288, lng: 110.376811 },
+        { name: 'Hotel Mawar Asri', price: 'Rp259.897', lat:  -7.804216, lng: 110.358821 },
+        { name: 'Hotel Ayaartta', price: 'Rp482.126', lat:  -7.801202, lng: 7.801202 },
+        { name: 'Hotel Royal Brongto', price: 'Rp260.001', lat:  -7.817838, lng: 110.359967 },
+        { name: 'Hotel Tasik Jogja', price: 'Rp152.874', lat:  -7.815578, lng: 110.356116 },
+        { name: 'Hotel Agung Mas', price: 'Rp215.585', lat:  -7.791513, lng: 110.353801 },
+        { name: 'Hotel Puri Pangeran', price: 'Rp297.035', lat: -7.800742, lng: 110.374585 },
+        { name: 'Hotel Rajadani Ackni', price: 'Rp256.987', lat:  -7.801040, lng: 110.371612 },
+        { name: 'Hotel Zest', price: 'Rp278.316', lat:  -7.799164, lng: 110.373276 },
+        { name: 'Hotel Jambuluwuk Malioboro', price: 'Rp96.665', lat:  -7.797625, lng: 110.372476 },
+        { name: 'Hotel Tjokro Style', price: 'Rp273.987', lat:  -7.816709, lng: 110.380672 },
+        { name: 'Hotel The Journey', price: 'Rp240.367', lat:  -7.816506, lng: 110.378038 },
+        { name: 'Hotel Cinka Garini', price: 'Rp260.001', lat:  -7.818709, lng: 110.382590 },
+        { name: 'Hotel Burza', price: 'Rp400.000', lat:  -7.824202, lng: 110.366641 },
+        { name: 'Hotel Lynn', price: 'Rp401.056', lat:  -7.824543, lng: 110.366853 },
+        { name: 'Hotel KJ', price: 'Rp478.826', lat: -7.822491, lng: 110.367494 },
+        { name: 'Hotel The Alana', price: 'Rp818.059', lat:  -7.815348, lng: 110.365614 },
+        { name: 'Hotel Ruba Grha', price: 'Rp249.863', lat:  -7.820631, lng: 110.362197 },
+        { name: 'Hotel The Grand Palace', price: 'Rp268.761', lat:  -7.821540, lng: 110.364312 },
+        { name: 'Hotel Matahari', price: 'Rp220.320', lat:  -7.822011, lng: 110.367984 },
+        { name: 'Hotel Greenhost Boutique', price: 'Rp720.000', lat:  -7.820020, lng: 110.369174 },
+        { name: 'Hotel Adhisthana', price: 'Rp960.000', lat:  -7.820025, lng: 110.372215 },
+        { name: 'Hotel Indah Palace', price: 'Rp274.618', lat:  -7.818547, lng: 110.372960 },
+        { name: 'Hotel Chantya', price: 'Rp214.151', lat:  -7.822151, lng: 110.373162 },
+        { name: 'Hotel Livinn', price: 'Rp206.960', lat: -7.812375, lng: 110.391308 },
+        { name: 'Hotel SNOOZE', price: 'Rp169.162', lat:  -7.804696, lng: 110.367894 },
+        { name: 'Wisma Kusuma Hotel', price: '225.000', lat: -7.862957, lng: 110.158071 },
+        { name: 'Hotel Simply Homy', price: '286.579', lat: -7.903686, lng: 110.078656 },
+        { name: 'Cordia Hotel Yogyakarta', price: '589.679', lat: -7.898313, lng: 110.059893 },
+        { name: 'Hotel Omah Soemantri', price: '253.890', lat: -7.882555, lng: 110.046378 },
+        { name: 'Hotel Dewata YIA', price: '134.989', lat: -7.881915, lng: 110.058677 },
+        { name: 'Morazen Airport Yogyakarta', price: '524.159', lat: -7.886174, lng: 110.065525 },
+        { name: 'Urbanview keTemon Hotel & Resto YIA', price: '252.206', lat: -7.886357, lng: 110.067284 },
+        { name: 'Swiss-belhotel Airport Yogyakarta', price: '570.810', lat: -7.887064, lng: 110.069899 },
+        { name: 'Ibis Yogyakarta International Airport Kulon Progo', price: '538.159', lat: -7.886819, lng: 110.072727 },
+        { name: 'Hotel Hapsari Syariah Kulon Progo', price: '342.855', lat: -7.890495, lng: 110.077391 },
+        { name: 'Telaga Mulya Hotel', price: '219.600', lat: -7.876509, lng: 110.134296 },
+        { name: 'UNY Hotel Wates', price: '206.612', lat: -7.855908, lng: 110.163320 },
+        { name: 'Hotel Garrya Bianti', price: 'Rp4.300.000', lat: -7.708398741299836, lng: 110.36430451243764 },
+        { name: 'Hotel Ramada by Wyndham', price: 'Rp450.000', lat: -7.684930061513297, lng: 110.340644202438 },
+        { name: 'Hotel Prima SR', price: 'Rp350.000', lat: -7.709975376109682, lng: 110.35529264299834 },
+        { name: 'Hotel Griya Persada', price: 'Rp450.000', lat: -7.60712914805671, lng: 110.42177745192804 },
+        { name: 'Hotel @K Kaliurang', price: 'Rp470.000', lat: -7.5956180312335935, lng: 110.42794656817907 },
+        { name: 'Hotel Innside', price: 'Rp726.000', lat: -7.766691405216452, lng: 110.43205410919849 },
+        { name: 'Hotel Aveon', price: 'Rp532.000', lat: -7.763896439626038, lng: 110.42290860589156 },
+        { name: 'Hotel Grand Satoria', price: 'Rp333.000', lat: -7.783488444829057, lng: 110.42204503309483 },
+        { name: 'Hotel The Atrium', price: 'Rp458.000', lat: -7.747234653742754, lng: 110.35992435424257 },
+        { name: 'Hotel The Alana', price: 'Rp653.000', lat: -7.73924025624453, lng: 110.37719960400446 },
+        { name: 'Hotel Indoluxe', price: 'Rp491.000', lat: -7.750195813026157, lng: 110.3724266919786 },
+        { name: 'Hotel Grand Keisha', price: 'Rp522.000', lat: -7.759198981841757, lng: 110.39564758072851 },
+        { name: 'Hotel Crystal Lotus', price: 'Rp382.000', lat: -7.759366451902484, lng: 110.3624865297297 },
+        { name: 'Hotel The Sahid Rich', price: 'Rp543.000', lat: -7.752337791275638, lng: 110.36109980476448 },
+        { name: 'Hotel Lavayette', price: 'Rp769.000', lat: -7.759436206054268, lng: 110.38730850168584 },
+        { name: 'Hotel Grand Mercure', price: 'Rp669.000', lat: -7.7835806469671445, lng: 110.39243045824382 },
+        { name: 'Hotel Royal Ambarukmo', price: 'Rp950.000', lat: -7.782314660784676, lng: 110.4030301663039 },
+        { name: 'Hotel Santika Gunungkidul', price: 'Rp774.000', lat: -7.9386252, lng: 110.5760136 },
+        { name: 'D’Girijati Resort and Beachclub', price: 'Rp834.000', lat: -8.024165, lng: 110.340000 },
+        { name: 'Collection O Gunung Kidul (ex Orchid Hotel)', price: 'Rp163.000', lat: -8.048189, lng: 110.584602 },
+        { name: 'Hotel Kampoeng Drini', price: 'Rp350.000', lat: -8.13777, lng: 110.577851 },
+        { name: 'Ama Awa Resort', price: 'Rp714.000', lat: -8.131258, lng: 110.550840 },
+        { name: 'Baron Lighthouse Hotel', price: 'Rp899.339', lat:  -8.130910, lng: 110.548740 },
+        { name: 'Ros In Hotel', price: 'Rp320.000', lat: -7.8535, lng: 110.3960 },
+        { name: 'Pondok Gajah Hotel', price: 'Rp260.000', lat: -7.8280, lng: 110.4320 },
+        { name: 'Hotel Gemah Ripah', price: 'Rp143.000', lat: -7.8050, lng: 110.3910 },
+        { name: 'Hotel Gaharu', price: 'Rp280.000', lat: -7.8270, lng: 110.4130 },
+        { name: 'Tembi Rumah Budaya', price: 'Rp600.000', lat: -7.8440, lng: 110.4135 },
+        { name: 'Bukit Indah Hotel & Resto', price: 'Rp350.000', lat: -7.8830, lng: 110.4580 },
+        { name: 'Grand Dafam Rohan (Grand Rohan Jogja)', price: 'Rp502.000', lat: -7.8215, lng: 110.4210 },
+        { name: 'Tirta Kencana Hotel', price: 'Rp320.000', lat: -7.8300, lng: 110.4200 },
+        { name: 'Hotel Adinda', price: 'Rp280.000', lat: -7.8800, lng: 110.3820 },
+        { name: 'Hotel Bukit Hijau', price: 'Rp300.000', lat: -7.8940, lng: 110.3800 },
+        { name: 'Hotel Mataram Indah', price: 'Rp350.000', lat: -7.8250, lng: 110.4200 },
+        { name: 'Joglo Mandapa Boutique Hotel & Resto', price: 'Rp324.000', lat: -7.8360, lng: 110.4100 },
+        { name: 'Ndalem Bantul', price: 'Rp300.000', lat: -7.8580, lng: 110.3990 },
+        { name: 'dOmah Hotel Yogya', price: 'Rp862.000', lat: -7.8450, lng: 110.4130 },
+    ];
+
+ const input = document.getElementById('wisataInput');
+    const btnWisata = document.getElementById('btnWisata');
+    const btnHotel = document.getElementById('btnHotel');
+    const hotelList = document.getElementById('hotelList');
+    const infoBox = document.getElementById('info');
+    const sortLabel = document.getElementById('sortLabel');
+    const sortSelect = document.getElementById('sortSelect');
+
+
+    let currentWisata = null;
+    let hotelMarkers = [];
+    let radiusCircle = null;
+    let wisataMarker = null;
+
+    const wisataIcon = L.icon({
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/17102/17102520.png',
+  iconSize: [36, 36],
+  iconAnchor: [18, 36],
+  popupAnchor: [0, -36]
+});
+
+    btnWisata.addEventListener('click', () => {
+      const query = input.value.trim().toLowerCase();
+      if (!query) return;
+
+      const wisata = wisataData.find(w => w.name.toLowerCase().includes(query));
+      if (!wisata) {
+        alert('Tempat wisata tidak ditemukan.');
+        return;
+      }
+
+      currentWisata = wisata;
+      map.flyTo([wisata.lat, wisata.lng], 14);
+
+      if (radiusCircle) map.removeLayer(radiusCircle);
+      if (wisataMarker) map.removeLayer(wisataMarker);
+
+      radiusCircle = L.circle([wisata.lat, wisata.lng], {
+      radius: 5000,
+      color: '#606C38',
+      weight: 2,
+      fill: false
+      }).addTo(map);
+
+
+wisataMarker = L.marker([wisata.lat, wisata.lng], { icon: wisataIcon }).addTo(map)
+        .bindPopup(`<b>${wisata.name}</b><br>${wisata.description}`).openPopup();
+
+      hotelList.innerHTML = '';
+      infoBox.style.display = 'none';
+      hotelMarkers.forEach(m => map.removeLayer(m));
+    });
+
+  const hotelIcon = L.icon({
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/14026/14026562.png',
+  iconSize: [28, 28],
+  iconAnchor: [14, 28],
+  popupAnchor: [0, -28]
+});
+
+
+btnHotel.addEventListener('click', () => {
+  document.getElementById('sidebar').style.maxHeight = '80vh';
+  document.getElementById('sidebar').style.overflowY = 'auto';
+  if (!currentWisata) return alert('Pilih tempat wisata terlebih dahulu.');
+
+  hotelList.innerHTML = '';
+  hotelMarkers.forEach(m => map.removeLayer(m));
+  hotelMarkers = [];
+
+  document.getElementById('sortLabel').style.display = 'block';
+
+  const sortType = sortSelect.value;
+  const sortedHotels = hotelData
+    .map(h => {
+      const distance = map.distance([currentWisata.lat, currentWisata.lng], [h.lat, h.lng]);
+      return { ...h, distance };
+    })
+    .filter(h => h.distance <= 3000)
+    .sort((a, b) => {
+      if (sortType === 'price') {
+        return parseInt(a.price.replace(/\D/g, '')) - parseInt(b.price.replace(/\D/g, ''));
+      } else {
+        return a.distance - b.distance;
+      }
+    });
+
+  sortedHotels.forEach(hotel => {
+const marker = L.marker([hotel.lat, hotel.lng], { icon: hotelIcon }).addTo(map);
+    hotelMarkers.push(marker);
+  const popupContent = `
+  <div style="text-align: center;">
+    <b>${hotel.name}</b><br>
+    Harga: ${hotel.price}<br>
+    Jarak: ${(hotel.distance / 1000).toFixed(2)} km<br><br>
+    <a href="https://www.tiket.com" target="_blank" style="text-decoration: underline; color: #00809D;" onmousedown="this.style.color='#283618'">Booking Sekarang!</a>
+  </div>`;
+    marker.bindPopup(popupContent);
+
+    const li = document.createElement('li');
+    li.textContent = hotel.name;
+    li.addEventListener('click', () => {
+      map.setView([hotel.lat, hotel.lng], 15);
+      marker.openPopup();
+    });
+    hotelList.appendChild(li);
+
+    sortSelect.addEventListener('change', () => {
+  btnHotel.click();
+});
+
+  });
+});
+function startApp() {
+  document.getElementById('introOverlay').style.display = 'none';
+  document.getElementById('floatingTitle').style.display = 'block';
+}
+
+  </script>
+</body>
+</html>
